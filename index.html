@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Escape Juntos: La Gran Escapada</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: #0b0e14;
+            color: #ffffff;
+            font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 8px;
+            overflow: hidden;
+        }
+
+        #game-wrapper {
+            width: 100%;
+            max-width: 460px;
+            background: #141824;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.06);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top HUD Bar */
+        #ui-header {
+            padding: 10px 14px;
+            background: linear-gradient(180deg, #1f2435, #151a28);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #262c3f;
+        }
+
+        .level-badge {
+            font-size: 12px;
+            font-weight: 700;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.12);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .keys-tracker {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        .key-slot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #1e2334;
+            border: 1px solid #333b52;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .key-slot.collected {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border-color: #fef08a;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+            transform: scale(1.1);
+        }
+
+        /* Active Character Button */
+        #active-char-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #1e2334;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 2px solid #333b52;
+            cursor: pointer;
+        }
+
+        #active-char-btn:active {
+            transform: scale(0.95);
+        }
+
+        .char-avatar {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .avatar-leo { background: #3b82f6; box-shadow: 0 0 6px rgba(59, 130, 246, 0.8); }
+        .avatar-mia { background: #ec4899; box-shadow: 0 0 6px rgba(236, 72, 153, 0.8); }
+
+        #active-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+
+        /* Canvas Arena */
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: #07090f;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        /* Dialogue Box */
+        #dialogue-box {
+            position: absolute;
+            bottom: 8px;
+            left: 4%;
+            width: 92%;
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px solid #3b82f6;
+            border-radius: 10px;
+            padding: 8px 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.8);
+            z-index: 10;
+            display: none;
+        }
+
+        #dialogue-speaker {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        #dialogue-text {
+            font-size: 12px;
+            color: #e2e8f0;
+            line-height: 1.35;
+        }
+
+        /* Controls Section */
+        #controls-panel {
+            padding: 12px;
+            background: #0f121b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* D-PAD Layout */
+        .dpad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 44px);
+            grid-template-rows: repeat(3, 44px);
+            gap: 3px;
+        }
+
+        .dpad-btn {
+            background: linear-gradient(180deg, #252b3d, #1a1f2e);
+            border: 1px solid #363e56;
+            border-radius: 9px;
+            color: #f1f5f9;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #0d1017;
+        }
+
+        .dpad-btn:active, .dpad-btn.active {
+            background: #3b82f6;
+            border-color: #60a5fa;
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #0d1017;
+        }
+
+        .dpad-empty { visibility: hidden; }
+
+        /* Action Buttons */
+        .action-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 52%;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 12px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 3px 0 rgba(0,0,0,0.4);
+        }
+
+        .action-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 rgba(0,0,0,0.4);
+        }
+
+        #btn-search {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: 1px solid #f87171;
+        }
+
+        #btn-switch {
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            border: 1px solid #a78bfa;
+        }
+
+        /* Hint bar */
+        #hint-bar {
+            background: #080a0f;
+            color: #64748b;
+            font-size: 10px;
+            text-align: center;
+            padding: 6px 10px;
+            border-top: 1px solid #181d2c;
+        }
+
+        #hint-bar b {
+            color: #cbd5e1;
+        }
+
+        /* Win Modal Overlay */
+        #win-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 14, 26, 0.96);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+            z-index: 30;
+            display: none;
+        }
+
+        #win-overlay h2 {
+            font-size: 22px;
+            color: #fbbf24;
+            margin-bottom: 8px;
+        }
+
+        #win-overlay p {
+            font-size: 12px;
+            color: #cbd5e1;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+
+        .btn-restart {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <!-- Top HUD -->
+        <div id="ui-header">
+            <span class="level-badge" id="level-title">Nivel 1: El Dormitorio</span>
+            
+            <div class="keys-tracker">
+                <span>Llaves:</span>
+                <div class="key-slot" id="slot-0">🔑</div>
+                <div class="key-slot" id="slot-1" style="display:none;">🔑</div>
+            </div>
+
+            <div id="active-char-btn" onclick="switchPlayer()">
+                <span id="active-avatar" class="char-avatar avatar-leo"></span>
+                <span id="active-name">Leo</span>
+            </div>
+        </div>
+
+        <!-- Canvas Game Screen -->
+        <div id="canvas-container">
+            <canvas id="gameCanvas" width="400" height="300"></canvas>
+            
+            <!-- Dialogue Box -->
+            <div id="dialogue-box">
+                <div id="dialogue-speaker">LEO</div>
+                <div id="dialogue-text">¡Estamos atrapados en este cuarto! Debemos explorar y buscar la llave para salir.</div>
+            </div>
+
+            <!-- Victory Screen -->
+            <div id="win-overlay">
+                <h2>🎉 ¡LIBRES AL FIN! 🎉</h2>
+                <p>Leo y su hermana Mia trabajaron en equipo, superaron los rompecabezas y encontraron todas las llaves para escapar de la mansión.</p>
+                <button class="btn-restart" onclick="restartGame()">Jugar de Nuevo</button>
+            </div>
+        </div>
+
+        <!-- Mobile Controls -->
+        <div id="controls-panel">
+            <!-- D-PAD -->
+            <div class="dpad-grid">
+                <div class="dpad-empty"></div>
+                <button class="dpad-btn" id="dpad-up">▲</button>
+                <div class="dpad-empty"></div>
+
+                <button class="dpad-btn" id="dpad-left">◄</button>
+                <div class="dpad-empty"></div>
+                <button class="dpad-btn" id="dpad-right">►</button>
+
+                <div class="dpad-empty"></div>
+                <button class="dpad-btn" id="dpad-down">▼</button>
+                <div class="dpad-empty"></div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="action-column">
+                <button class="action-btn" id="btn-search" onclick="handleSearchAction()">
+                    🔍 BUSCAR / USAR
+                </button>
+                <button class="action-btn" id="btn-switch" onclick="switchPlayer()">
+                    🔄 CAMBIAR DE HERMANO
+                </button>
+            </div>
+        </div>
+
+        <!-- Hint bar -->
+        <div id="hint-bar">
+            💡 Tocá <b>CAMBIAR DE HERMANO</b> para alternar entre Leo y Mia. ¡Encontrá las llaves!
+        </div>
+    </div>
+
+    <script>
+        // --- AUDIO SYNTHESIZER ---
+        const AudioSys = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.ctx = new AudioContext();
+                    }
+                }
+            },
+            playTone(freq, type, duration, vol = 0.1) {
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    if (this.ctx.state === 'suspended') {
+                        this.ctx.resume();
+                    }
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e){}
+            },
+            keyPickup() {
+                this.playTone(523.25, 'triangle', 0.12, 0.2);
+                setTimeout(() => this.playTone(659.25, 'triangle', 0.12, 0.2), 90);
+                setTimeout(() => this.playTone(783.99, 'triangle', 0.2, 0.2), 180);
+            },
+            switchChar() {
+                this.playTone(440, 'sine', 0.08, 0.15);
+                setTimeout(() => this.playTone(660, 'sine', 0.08, 0.15), 50);
+            },
+            doorUnlock() {
+                this.playTone(180, 'sawtooth', 0.25, 0.2);
+                setTimeout(() => this.playTone(330, 'sine', 0.35, 0.2), 120);
+            },
+            step() {
+                this.playTone(110 + Math.random()*30, 'square', 0.03, 0.02);
+            },
+            winFanfare() {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((n, i) => {
+                    setTimeout(() => this.playTone(n, 'triangle', 0.3, 0.2), i * 140);
+                });
+            }
+        };
+
+        // --- GAME LOGIC ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const GRID = 20;
+        const COLS = 20;
+        const ROWS = 15;
+
+        let currentLevel = 0;
+        let activeChar = 'leo';
+        let keysFound = [false, false];
+        let dialogueTimer = null;
+
+        const players = {
+            leo: {
+                name: "Leo",
+                color: "#3b82f6",
+                shirt: "#1d4ed8",
+                hair: "#78350f",
+                x: 3, y: 12,
+                facing: "down"
+            },
+            mia: {
+                name: "Mia",
+                color: "#ec4899",
+                shirt: "#be185d",
+                hair: "#f59e0b",
+                x: 4, y: 12,
+                facing: "down"
+            }
+        };
+
+        const levelData = [
+            {
+                name: "Nivel 1: El Dormitorio",
+                keysRequired: 1,
+                leoPos: {x: 3, y: 12},
+                miaPos: {x: 4, y: 12},
+                grid: [
+                    [1,1,1,1,1,1,1,1,1,1,4,1,1,1,1,1,1,1,1,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,1],
+                    [1,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
+                    [1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+                ],
+                interactables: [
+                    {x: 17, y: 2, keyIndex: 0, text: "¡Mia buscó en el escritorio y encontró la LLAVE DE BRONCE!"},
+                    {x: 1, y: 2, text: "Una cama de madera antigua. No hay nada debajo."},
+                    {x: 1, y: 7, text: "Un estante con libros de cuentos sobre la mesa."},
+                    {x: 18, y: 7, text: "Un baúl lleno de ropa vieja."}
+                ]
+            },
+            {
+                name: "Nivel 2: La Biblioteca",
+                keysRequired: 2,
+                leoPos: {x: 2, y: 12},
+                miaPos: {x: 3, y: 12},
+                grid: [
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,2,2,0,1,2,2,2,0,1,2,2,2,0,1,0,0,0,0,1],
+                    [1,2,2,0,1,2,2,2,0,1,2,2,2,0,1,0,0,0,0,1],
+                    [1,0,0,0,1,0,0,0,0,1,0,0,0,0,1,1,6,1,1,1],
+                    [1,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,4,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1],
+                    [1,0,5,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+                ],
+                interactables: [
+                    {x: 6, y: 1, keyIndex: 0, text: "¡Leo encontró la LLAVE DE PLATA entre unos tomos viejos!"},
+                    {x: 17, y: 1, keyIndex: 1, text: "¡Mia agarró la LLAVE DE ORO en la caja fuerte tras la reja!"},
+                    {x: 11, y: 1, text: "Enciclopedias viejas y llenas de polvo."}
+                ]
+            },
+            {
+                name: "Nivel 3: El Sótano Secreto",
+                keysRequired: 2,
+                leoPos: {x: 2, y: 2},
+                miaPos: {x: 3, y: 2},
+                grid: [
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,1,0,2,2,2,2,0,1,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,1,0,2,2,2,2,0,1,0,0,0,0,0,1],
+                    [1,1,1,6,1,1,1,0,0,0,0,0,0,1,1,1,6,1,1,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,2,2,0,0,1,1,1,0,0,1,1,1,0,0,2,2,0,1],
+                    [1,0,2,2,0,0,1,0,0,0,0,0,0,1,0,0,2,2,0,1],
+                    [1,0,0,0,0,0,1,0,5,0,0,5,0,1,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,1,1,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,4,4,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+                ],
+                interactables: [
+                    {x: 2, y: 8, keyIndex: 0, text: "¡Encontraron la LLAVE MAESTRA 1 en los barriles!"},
+                    {x: 17, y: 8, keyIndex: 1, text: "¡Encontraron la LLAVE MAESTRA 2 en el arcón de hierro!"}
+                ]
+            }
+        ];
+
+        function loadLevel(idx) {
+            currentLevel = idx;
+            const lvl = levelData[idx];
+            document.getElementById('level-title').innerText = lvl.name;
+
+            players.leo.x = lvl.leoPos.x;
+            players.leo.y = lvl.leoPos.y;
+            players.mia.x = lvl.miaPos.x;
+            players.mia.y = lvl.miaPos.y;
+
+            keysFound = new Array(lvl.keysRequired).fill(false);
+            lvl.interactables.forEach(item => { item.found = false; });
+
+            updateKeysHUD();
+            showDialogue("SISTEMA", `¡Bienvenido al ${lvl.name}! Encuentra las llaves para abrir la puerta de salida.`);
+        }
+
+        function updateKeysHUD() {
+            const lvl = levelData[currentLevel];
+            const slot0 = document.getElementById('slot-0');
+            const slot1 = document.getElementById('slot-1');
+
+            if (lvl.keysRequired >= 1) {
+                slot0.style.display = 'flex';
+                slot0.className = keysFound[0] ? 'key-slot collected' : 'key-slot';
+            } else {
+                slot0.style.display = 'none';
+            }
+
+            if (lvl.keysRequired >= 2) {
+                slot1.style.display = 'flex';
+                slot1.className = keysFound[1] ? 'key-slot collected' : 'key-slot';
+            } else {
+                slot1.style.display = 'none';
+            }
+        }
+
+        function switchPlayer() {
+            activeChar = activeChar === 'leo' ? 'mia' : 'leo';
+            AudioSys.switchChar();
+
+            const avatar = document.getElementById('active-avatar');
+            const nameEl = document.getElementById('active-name');
+
+            if (activeChar === 'leo') {
+                avatar.className = 'char-avatar avatar-leo';
+                nameEl.innerText = 'Leo';
+                showDialogue("LEO", "¡Ahora controlo a Leo!");
+            } else {
+                avatar.className = 'char-avatar avatar-mia';
+                nameEl.innerText = 'Mia';
+                showDialogue("MIA", "¡Ahora controlo a Mia!");
+            }
+        }
+
+        function showDialogue(speaker, msg) {
+            const box = document.getElementById('dialogue-box');
+            const speakerEl = document.getElementById('dialogue-speaker');
+            const textEl = document.getElementById('dialogue-text');
+
+            speakerEl.innerText = speaker;
+            speakerEl.style.color = speaker === 'LEO' ? '#60a5fa' : (speaker === 'MIA' ? '#f472b6' : '#fbbf24');
+            box.style.borderColor = speaker === 'LEO' ? '#3b82f6' : (speaker === 'MIA' ? '#ec4899' : '#fbbf24');
+            textEl.innerText = msg;
+            box.style.display = 'block';
+
+            if (dialogueTimer) clearTimeout(dialogueTimer);
+            dialogueTimer = setTimeout(() => {
+                box.style.display = 'none';
+            }, 3800);
+        }
+
+        // --- INPUT HANDLING ---
+        const activeKeys = {};
+
+        window.addEventListener('keydown', (e) => {
+            activeKeys[e.key] = true;
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                switchPlayer();
+            }
+            if (e.key === ' ' || e.key.toLowerCase() === 'e') {
+                e.preventDefault();
+                handleSearchAction();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            activeKeys[e.key] = false;
+        });
+
+        function bindTouchControl(id, keyName) {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            const onPress = (e) => {
+                e.preventDefault();
+                activeKeys[keyName] = true;
+                btn.classList.add('active');
+            };
+            const onRelease = (e) => {
+                e.preventDefault();
+                activeKeys[keyName] = false;
+                btn.classList.remove('active');
+            };
+
+            btn.addEventListener('touchstart', onPress, {passive: false});
+            btn.addEventListener('touchend', onRelease, {passive: false});
+            btn.addEventListener('mousedown', onPress);
+            btn.addEventListener('mouseup', onRelease);
+            btn.addEventListener('mouseleave', onRelease);
+        }
+
+        bindTouchControl('dpad-up', 'ArrowUp');
+        bindTouchControl('dpad-down', 'ArrowDown');
+        bindTouchControl('dpad-left', 'ArrowLeft');
+        bindTouchControl('dpad-right', 'ArrowRight');
+
+        let moveDelay = 0;
+
+        function updatePlayerMovement() {
+            if (moveDelay > 0) {
+                moveDelay--;
+                return;
+            }
+
+            const p = players[activeChar];
+            let targetX = p.x;
+            let targetY = p.y;
+            let moved = false;
+
+            if (activeKeys['ArrowUp'] || activeKeys['w'] || activeKeys['W']) {
+                targetY--;
+                p.facing = 'up';
+                moved = true;
+            } else if (activeKeys['ArrowDown'] || activeKeys['s'] || activeKeys['S']) {
+                targetY++;
+                p.facing = 'down';
+                moved = true;
+            } else if (activeKeys['ArrowLeft'] || activeKeys['a'] || activeKeys['A']) {
+                targetX--;
+                p.facing = 'left';
+                moved = true;
+            } else if (activeKeys['ArrowRight'] || activeKeys['d'] || activeKeys['D']) {
+                targetX++;
+                p.facing = 'right';
+                moved = true;
+            }
+
+            if (moved) {
+                if (isValidMove(targetX, targetY)) {
+                    p.x = targetX;
+                    p.y = targetY;
+                    AudioSys.step();
+                    moveDelay = 7;
+                }
+            }
+        }
+
+        function checkPlateActive() {
+            const lvl = levelData[currentLevel];
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (lvl.grid[r][c] === 5) {
+                        if ((players.leo.x === c && players.leo.y === r) || (players.mia.x === c && players.mia.y === r)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function isValidMove(gx, gy) {
+            const lvl = levelData[currentLevel];
+            if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) return false;
+
+            const tile = lvl.grid[gy][gx];
+
+            if (tile === 1 || tile === 2) return false;
+
+            if (tile === 4) {
+                const hasAllKeys = keysFound.every(k => k === true);
+                if (hasAllKeys) {
+                    AudioSys.doorUnlock();
+                    if (currentLevel + 1 < levelData.length) {
+                        loadLevel(currentLevel + 1);
+                    } else {
+                        AudioSys.winFanfare();
+                        document.getElementById('win-overlay').style.display = 'flex';
+                    }
+                    return false;
+                } else {
+                    showDialogue("PUERTA", "¡La puerta está trancada! Necesitas reunir todas las llaves primero.");
+                    return false;
+                }
+            }
+
+            if (tile === 6) {
+                const isPressed = checkPlateActive();
+                if (!isPressed) {
+                    showDialogue("REJA", "La reja está cerrada. Tu compañero debe pararse sobre el interruptor rojo.");
+                    return false;
+                }
+            }
+
+            const other = activeChar === 'leo' ? players.mia : players.leo;
+            if (other.x === gx && other.y === gy) return false;
+
+            return true;
+        }
+
+        function handleSearchAction() {
+            const p = players[activeChar];
+            const lvl = levelData[currentLevel];
+
+            let frontX = p.x;
+            let frontY = p.y;
+            if (p.facing === 'up') frontY--;
+            if (p.facing === 'down') frontY++;
+            if (p.facing === 'left') frontX--;
+            if (p.facing === 'right') frontX++;
+
+            let targetItem = lvl.interactables.find(i => 
+                (i.x === p.x && i.y === p.y) || (i.x === frontX && i.y === frontY)
+            );
+
+            if (targetItem) {
+                if (targetItem.keyIndex !== undefined && !targetItem.found) {
+                    targetItem.found = true;
+                    keysFound[targetItem.keyIndex] = true;
+                    updateKeysHUD();
+                    AudioSys.keyPickup();
+                    showDialogue(p.name.toUpperCase(), targetItem.text);
+                } else {
+                    showDialogue(p.name.toUpperCase(), targetItem.text);
+                }
+            } else {
+                showDialogue(p.name.toUpperCase(), "Aquí no hay nada de interés.");
+            }
+        }
+
+        // --- DRAWING ENGINE ---
+        function renderScene() {
+            const lvl = levelData[currentLevel];
+            const isPlateDown = checkPlateActive();
+
+            ctx.fillStyle = '#07090f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const tile = lvl.grid[r][c];
+                    const px = c * GRID;
+                    const py = r * GRID;
+
+                    ctx.fillStyle = (r + c) % 2 === 0 ? '#141824' : '#10141f';
+                    ctx.fillRect(px, py, GRID, GRID);
+
+                    if (tile === 1) { // Wall
+                        ctx.fillStyle = '#262c3f';
+                        ctx.fillRect(px, py, GRID, GRID);
+                        ctx.fillStyle = '#151924';
+                        ctx.fillRect(px + 1, py + 1, GRID - 2, GRID - 2);
+                    } else if (tile === 2) { // Furniture
+                        ctx.fillStyle = '#78350f';
+                        ctx.fillRect(px + 2, py + 2, GRID - 4, GRID - 4);
+                        ctx.fillStyle = '#92400e';
+                        ctx.fillRect(px + 4, py + 4, GRID - 8, GRID - 8);
+                    } else if (tile === 4) { // Door
+                        ctx.fillStyle = '#991b1b';
+                        ctx.fillRect(px, py, GRID, GRID);
+                        ctx.fillStyle = '#fbbf24';
+                        ctx.beginPath();
+                        ctx.arc(px + 14, py + 10, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (tile === 5) { // Pressure Plate
+                        ctx.fillStyle = isPlateDown ? '#10b981' : '#ef4444';
+                        ctx.fillRect(px + 4, py + 4, GRID - 8, GRID - 8);
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(px + 4, py + 4, GRID - 8, GRID - 8);
+                    } else if (tile === 6) { // Gate
+                        if (!isPlateDown) {
+                            ctx.fillStyle = '#475569';
+                            ctx.fillRect(px + 7, py, 6, GRID);
+                        } else {
+                            ctx.strokeStyle = '#10b981';
+                            ctx.strokeRect(px + 3, py + 3, GRID - 6, GRID - 6);
+                        }
+                    }
+                }
+            }
+
+            lvl.interactables.forEach(item => {
+                if (item.keyIndex !== undefined && !item.found) {
+                    ctx.fillStyle = 'rgba(251, 191, 36, 0.6)';
+                    ctx.beginPath();
+                    ctx.arc(item.x * GRID + 10, item.y * GRID + 10, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            drawSprite(players.leo);
+            drawSprite(players.mia);
+
+            const activeP = players[activeChar];
+            ctx.strokeStyle = activeChar === 'leo' ? '#60a5fa' : '#f472b6';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(activeP.x * GRID + 10, activeP.y * GRID + 10, 11, 0, Math.PI * 2);
+            ctx.stroke();
+
+            updatePlayerMovement();
+            requestAnimationFrame(renderScene);
+        }
+
+        function drawSprite(p) {
+            const px = p.x * GRID;
+            const py = p.y * GRID;
+
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.beginPath();
+            ctx.ellipse(px + 10, py + 17, 6, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = p.shirt;
+            ctx.fillRect(px + 5, py + 8, 10, 8);
+
+            ctx.fillStyle = '#fed7aa';
+            ctx.beginPath();
+            ctx.arc(px + 10, py + 7, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = p.hair;
+            ctx.beginPath();
+            ctx.arc(px + 10, py + 5, 5, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(p.name, px + 10, py - 3);
+        }
+
+        function restartGame() {
+            document.getElementById('win-overlay').style.display = 'none';
+            loadLevel(0);
+        }
+
+        // Safe initialization after full load
+        window.addEventListener('load', () => {
+            loadLevel(0);
+            requestAnimationFrame(renderScene);
+        });
+    </script>
+</body>
+</html>
